@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 from pygam import LogisticGAM, s, f, l
 
-from .shared_utils import load_and_process_data, split_data, print_split_info
+from .shared_utils import load_and_process_data, split_data, print_split_info, save_model, load_model
 
 
 def build_gam_terms(X_train, n_splines=20):
@@ -73,7 +73,10 @@ def run(file_path=None):
         X_test_scaled = scaler.transform(X_test)
         X_test_scaled = np.nan_to_num(X_test_scaled)
 
-        gam = train_gam_automatic(X_train_scaled, y_train)
+        gam = load_model('gam')
+        if gam is None:
+            gam = train_gam_automatic(X_train_scaled, y_train)
+            save_model(gam, 'gam')
 
         acc = accuracy_score(y_test, gam.predict(X_test_scaled))
         try:

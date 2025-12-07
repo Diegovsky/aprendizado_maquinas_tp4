@@ -8,7 +8,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, ConfusionMatrixDisplay
-from .shared_utils import load_and_process_data, split_data
+from .shared_utils import load_and_process_data, split_data, save_model, load_model
 
 def train_hgbm_optimized(X_train, y_train):
     hgbm = HistGradientBoostingClassifier(random_state=42, early_stopping='auto')
@@ -58,7 +58,10 @@ def visualize_boosting_performance(model, X_test, y_test, feature_names, save_pr
 def run(file_path=None):
     X, y, features = load_and_process_data(file_path, n_features=25, n_informative=15)
     X_train, X_test, y_train, y_test = split_data(X, y, test_size=0.3)
-    model = train_hgbm_optimized(X_train, y_train)
+    model = load_model('gbte')
+    if model is None:
+        model = train_hgbm_optimized(X_train, y_train)
+        save_model(model, 'gbte')
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     try:

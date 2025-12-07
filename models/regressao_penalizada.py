@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 
-from .shared_utils import load_and_process_data, split_data, print_split_info
+from .shared_utils import load_and_process_data, split_data, print_split_info, save_model, load_model
 
 
 def prepare_data(X, y, test_size=0.3, random_state=42):
@@ -107,7 +107,10 @@ def run(file_path=None, target_col='target'):
     # Training loop
     for name, penalty, solver, l1_ratio in configs:
         try:
-            model = train_penalized_model(X_train, y_train, penalty, solver, l1_ratio)
+            model = load_model(f'penalized_regression_{name.replace(" ", "_")}')
+            if model is None:
+                model = train_penalized_model(X_train, y_train, penalty, solver, l1_ratio)
+                save_model(model, f'penalized_regression_{name.replace(" ", "_")}')
             metrics = extract_metrics(model, X_test, y_test)
             results_models[name] = model
             model_metrics[name] = metrics

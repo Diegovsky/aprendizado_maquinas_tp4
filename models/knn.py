@@ -14,7 +14,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, ConfusionMatrixDisplay
 from sklearn.pipeline import Pipeline
 
-from .shared_utils import load_and_process_data, split_data, print_split_info
+from .shared_utils import load_and_process_data, split_data, print_split_info, save_model, load_model
 
 
 def train_knn_optimized(X_train, y_train):
@@ -89,7 +89,10 @@ def run(file_path=None):
     
     X_train, X_test, y_train, y_test = split_data(X, y, test_size=0.3, stratify=True)
 
-    model = train_knn_optimized(X_train, y_train)
+    model = load_model('knn')
+    if model is None:
+        model = train_knn_optimized(X_train, y_train)
+        save_model(model, 'knn')
 
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)

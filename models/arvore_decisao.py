@@ -10,7 +10,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 
-from .shared_utils import load_and_process_data, split_data, print_split_info
+from .shared_utils import load_and_process_data, split_data, print_split_info, save_model, load_model
 
 
 def train_decision_tree(X_train, y_train):
@@ -74,7 +74,10 @@ def run(file_path=None):
 
     X_train, X_test, y_train, y_test = split_data(X, y, test_size=0.3)
 
-    model = train_decision_tree(X_train, y_train)
+    model = load_model('decision_tree')
+    if model is None:
+        model = train_decision_tree(X_train, y_train)
+        save_model(model, 'decision_tree')
 
     y_pred = model.predict(X_test)
     

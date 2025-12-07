@@ -9,7 +9,7 @@ from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegress
 from sklearn.linear_model import LassoCV, LogisticRegressionCV
 from sklearn.metrics import accuracy_score, roc_auc_score, mean_squared_error, r2_score, classification_report
 
-from .shared_utils import load_and_process_data, split_data
+from .shared_utils import load_and_process_data, split_data, save_model, load_model
 
 
 class RuleFitSimple:
@@ -144,7 +144,10 @@ def run(file_path=None, mode='classify'):
         X, y, feats = load_and_process_data(file_path, n_features=10)
         X_train, X_test, y_train, y_test = split_data(X, y, test_size=0.3)
 
-        model = train_rulefit(X_train, y_train, mode=mode)
+        model = load_model('rulefit')
+        if model is None:
+            model = train_rulefit(X_train, y_train, mode=mode)
+            save_model(model, 'rulefit')
 
         y_pred = model.predict(X_test)
         

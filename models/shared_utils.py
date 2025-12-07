@@ -4,6 +4,8 @@ Módulo compartilhado com funções comuns para todos os modelos ML.
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import joblib
+import os
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 
@@ -128,3 +130,71 @@ def print_split_info(X_train, X_test, y_train, y_test):
     Print information about train/test split.
     """
     pass
+
+
+def save_results_to_file(results_dict, filename):
+    """
+    Save model results to a txt file.
+    
+    Args:
+        results_dict: Dictionary with keys 'accuracy', 'auc', 'report'
+        filename: Output filename (without extension, will add .txt)
+    """
+    if not filename.endswith('.txt'):
+        filename = f"{filename}_metrics.txt"
+    
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(f"Accuracy: {results_dict.get('accuracy', 'N/A')}\n")
+            f.write(f"AUC: {results_dict.get('auc', 'N/A')}\n\n")
+            f.write(f"Classification Report:\n{results_dict.get('report', 'N/A')}\n")
+        return filename
+    except Exception as e:
+        raise Exception(f"Error saving results to {filename}: {e}")
+
+
+def save_model(model, model_name):
+    """
+    Save a trained model to disk using joblib.
+    
+    Args:
+        model: The trained model object
+        model_name: Name for the model file (without extension)
+    
+    Returns:
+        filepath: Path where model was saved
+    """
+    models_dir = "models_trained"
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    
+    filepath = os.path.join(models_dir, f"{model_name}.joblib")
+    try:
+        joblib.dump(model, filepath, compress=3)
+        return filepath
+    except Exception as e:
+        raise Exception(f"Error saving model to {filepath}: {e}")
+
+
+def load_model(model_name):
+    """
+    Load a previously trained model from disk using joblib.
+    
+    Args:
+        model_name: Name of the model file (without extension)
+    
+    Returns:
+        model: The loaded model object, or None if not found
+    """
+    models_dir = "models_trained"
+    filepath = os.path.join(models_dir, f"{model_name}.joblib")
+    
+    if not os.path.exists(filepath):
+        return None
+    
+    try:
+        model = joblib.load(filepath)
+        return model
+    except Exception as e:
+        raise Exception(f"Error loading model from {filepath}: {e}")
+
