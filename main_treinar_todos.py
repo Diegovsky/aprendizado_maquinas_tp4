@@ -3,12 +3,13 @@ import time
 
 # Importando seus módulos já refatorados
 import regressao_penalizada
-import gbte
-import knn
-import random_forest
-import prediction_rule_ensemble
-import arvore_decisao
-import modelo_gam
+from models import (gbte,
+ knn,
+ random_forest,
+ prediction_rule_ensemble,
+ arvore_decisao,
+ modelo_gam,
+)
 
 def executar_tudo():
     # --- CONFIGURAÇÃO ---
