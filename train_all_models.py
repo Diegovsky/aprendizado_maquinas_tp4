@@ -18,7 +18,7 @@ def run_all_models():
     """Train all models and save results to txt files."""
     # --- CONFIGURATION ---
     # Set the file path used by all scripts
-    CAMINHO_ARQUIVO = "datasets/meu_dataset_treino.tsv"
+    CAMINHO_ARQUIVO = "dataset_limpo_completo.tsv"
     
     # Check if file exists (Optional: remove if you want to run synthetic)
     if not os.path.exists(CAMINHO_ARQUIVO):
