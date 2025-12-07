@@ -2,11 +2,11 @@ import os
 import time
 
 # Importing refactored modules
-import regressao_penalizada
 from models import (
     gbte,
     knn,
     random_forest,
+    regressao_penalizada,
     prediction_rule_ensemble,
     arvore_decisao,
     modelo_gam,
