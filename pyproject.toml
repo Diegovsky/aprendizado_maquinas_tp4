@@ -2,4 +2,13 @@
 name = "aprendizado-maquinas-tp4"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "joblib>=1.5.2",
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.5",
+    "ordered-set>=4.1.0",
+    "pandas>=2.3.3",
+    "pygam>=0.11.0",
+    "scikit-learn>=1.7.2",
+    "seaborn>=0.13.2",
+]
