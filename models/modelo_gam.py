@@ -35,10 +35,27 @@ def train_gam_automatic(X_train, y_train):
     for t in terms[1:]:
         combined_terms = combined_terms + t
 
+    # Compute class-balanced sample weights to mitigate class imbalance
+    classes, counts = np.unique(y_train, return_counts=True)
+    class_weights = {cls: len(y_train) / (len(classes) * cnt) for cls, cnt in zip(classes, counts)}
+    sample_weights = np.array([class_weights[val] for val in y_train])
+
     gam = LogisticGAM(combined_terms, fit_intercept=True)
-    gam.fit(X_train, y_train)
+    gam.fit(X_train, y_train, weights=sample_weights)
     
     return gam
+
+
+def should_retrain(model, X_train, y_train, min_acc=0.6):
+    """Decide whether a loaded model should be retrained (degenerate predictions)."""
+    try:
+        preds = model.predict(X_train)
+        if len(np.unique(preds)) < 2:
+            return True
+        acc = accuracy_score(y_train, preds)
+        return acc < min_acc
+    except Exception:
+        return True
 
 
 def visualize_gam_interpretation(gam, scaler, feature_names, X_test, y_test, save_path='gam_results.png'):
@@ -82,7 +99,7 @@ def run(file_path=None):
         X_test_scaled = np.nan_to_num(X_test_scaled)
 
         gam = load_model('gam')
-        if gam is None:
+        if gam is None or should_retrain(gam, X_train_scaled, y_train):
             gam = train_gam_automatic(X_train_scaled, y_train)
             save_model(gam, 'gam')
 
