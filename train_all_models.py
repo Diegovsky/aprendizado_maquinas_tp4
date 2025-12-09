@@ -27,9 +27,6 @@ def run_all_models():
         # Uncomment below to force file existence:
         # return
 
-    print(f"=== STARTING UNIFIED TRAINING ===")
-    print(f"Target file: {CAMINHO_ARQUIVO}\n")
-
     # List of algorithms to run
     # Structure: (Module, Entry Point, Extra Arguments Dict)
     algorithms = [
@@ -59,41 +56,30 @@ def run_all_models():
         module_name = modulo.__name__.split(".")[-1]
         output_name = model_names.get(module_name, module_name)
 
-        print("\n" + "#" * 80)
-        print(f"### RUNNING MODULE: {module_name.upper()} ###")
-        print("#" * 80 + "\n")
-
         try:
             # Get the function from module using reflection
             func = getattr(modulo, entry_point)
 
             # Call the function passing the file and any extra arguments
             results = func(file_path=CAMINHO_ARQUIVO, **kwargs)
-            print(f"RESULTS: {results!r}")
 
-            if results and isinstance(results, dict):
+            if results and isinstance(results, dict) and 'error' not in results:
                 # Save results to txt file
                 output_file = save_results_to_file(results, output_name)
-                print(f"\n[SUCCESS] Module {module_name} completed.")
-                print(f"[SAVED] Results written to {output_file}")
+                print(f"[OK] {module_name} → {output_file}")
+            elif results and 'error' in results:
+                print(f"[ERROR] {module_name}: {results['error']}")
             else:
-                print(f"\n[WARNING] Module {module_name} returned unexpected results.")
+                print(f"[ERROR] {module_name}: unexpected results format")
 
         except AttributeError:
-            print(
-                f"\n[CONFIGURATION ERROR] Function '{entry_point}' does not exist in {module_name}."
-            )
+            print(f"[ERROR] Function '{entry_point}' does not exist in {module_name}.")
         except Exception as e:
-            print(f"\n[EXECUTION ERROR] Error running {module_name}: {e}")
-            # Continue ensures one error doesn't stop the others
+            print(f"[ERROR] {module_name}: {e}")
             continue
 
         # Small pause to ensure prints don't mix in buffer
-        time.sleep(1)
-
-    print("\n" + "=" * 80)
-    print("=== ALL TRAININGS HAVE BEEN COMPLETED ===")
-    print("=" * 80)
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
