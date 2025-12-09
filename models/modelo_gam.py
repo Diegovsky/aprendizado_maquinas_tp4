@@ -10,7 +10,7 @@ from pygam import LogisticGAM, s, f, l
 from .shared_utils import load_and_process_data, split_data, print_split_info, save_model, load_model
 
 
-def build_gam_terms(X_train, n_splines=20):
+def build_gam_terms(X_train, n_splines=12):
     """Builds GAM terms based on automatic detection."""
     n_features = X_train.shape[1]
     terms = []
@@ -27,7 +27,7 @@ def build_gam_terms(X_train, n_splines=20):
 
 
 def train_gam_automatic(X_train, y_train):
-    """Configures and trains a GAM with intelligent term selection."""
+    """Configures and trains a GAM with retries to avoid PIRLS divergence."""
     terms = build_gam_terms(X_train)
     if not terms:
         terms = [s(0)]
@@ -35,14 +35,30 @@ def train_gam_automatic(X_train, y_train):
     for t in terms[1:]:
         combined_terms = combined_terms + t
 
-    # Compute class-balanced sample weights to mitigate class imbalance
+    # Class-balanced sample weights to mitigate class imbalance
     classes, counts = np.unique(y_train, return_counts=True)
     class_weights = {cls: len(y_train) / (len(classes) * cnt) for cls, cnt in zip(classes, counts)}
     sample_weights = np.array([class_weights[val] for val in y_train])
 
-    gam = LogisticGAM(combined_terms, fit_intercept=True)
+    # Retry with increasing regularization and capped iterations
+    lam_grid = [10, 50, 200]
+    for lam_val in lam_grid:
+        try:
+            gam = LogisticGAM(
+                combined_terms,
+                fit_intercept=True,
+                lam=lam_val,
+                max_iter=200,
+                tol=1e-3
+            )
+            gam.fit(X_train, y_train, weights=sample_weights)
+            return gam
+        except Exception:
+            continue
+
+    # Fallback: very strong regularization
+    gam = LogisticGAM(combined_terms, fit_intercept=True, lam=500, max_iter=200, tol=1e-3)
     gam.fit(X_train, y_train, weights=sample_weights)
-    
     return gam
 
 
