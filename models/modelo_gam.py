@@ -16,7 +16,9 @@ def build_gam_terms(X_train, n_splines=20):
     terms = []
     
     for i in range(min(n_features, 5)):
-        if X_train[:, i].nunique() > 10:
+        # Use unique count for numpy arrays
+        unique_count = len(np.unique(X_train[:, i]))
+        if unique_count > 10:
             terms.append(s(i, n_splines=min(n_splines, 25)))
         else:
             terms.append(f(i))
@@ -27,7 +29,13 @@ def build_gam_terms(X_train, n_splines=20):
 def train_gam_automatic(X_train, y_train):
     """Configures and trains a GAM with intelligent term selection."""
     terms = build_gam_terms(X_train)
-    gam = LogisticGAM(*terms)
+    if not terms:
+        terms = [s(0)]
+    combined_terms = terms[0]
+    for t in terms[1:]:
+        combined_terms = combined_terms + t
+
+    gam = LogisticGAM(combined_terms, fit_intercept=True)
     gam.fit(X_train, y_train)
     
     return gam

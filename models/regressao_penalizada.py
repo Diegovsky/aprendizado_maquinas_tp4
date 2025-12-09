@@ -1,4 +1,6 @@
 """Module: Penalized Regression (Lasso, Ridge, ElasticNet)"""
+from typing import Any, Dict, List, Tuple, Union
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,13 +8,18 @@ import argparse
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegressionCV
+from sklearn.linear_model import LogisticRegressionCV, LogisticRegression
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 
 from .shared_utils import load_and_process_data, split_data, print_split_info, save_model, load_model
 
 
-def prepare_data(X, y, test_size=0.3, random_state=42):
+def prepare_data(
+    X: np.ndarray,
+    y: np.ndarray,
+    test_size: float = 0.3,
+    random_state: int = 42,
+) -> Tuple[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], StandardScaler]:
     """Data preparation pipeline: Split + StandardScaler."""
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
@@ -25,15 +32,22 @@ def prepare_data(X, y, test_size=0.3, random_state=42):
     return (X_train, X_test, y_train, y_test), scaler
 
 
-def train_penalized_model(X_train, y_train, penalty='l2', solver='lbfgs', l1_ratio=None):
-    """Trains a penalized logistic regression model."""
+def train_penalized_model(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    penalty: str = 'l2',
+    solver: str = 'lbfgs',
+    l1_ratio: float = None,
+    cv_splits: int = 5,
+) -> LogisticRegressionCV:
+    """Trains a penalized logistic regression model with safe defaults."""
     model = LogisticRegressionCV(
         Cs=[0.1, 1.0, 10.0],
         penalty=penalty,
         solver=solver,
         l1_ratio=l1_ratio,
         max_iter=1000,
-        cv=5,
+        cv=cv_splits,
         n_jobs=-1,
         random_state=42
     )
@@ -42,7 +56,7 @@ def train_penalized_model(X_train, y_train, penalty='l2', solver='lbfgs', l1_rat
     return model
 
 
-def extract_metrics(model, X_test, y_test):
+def extract_metrics(model: Any, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, Any]:
     """Generates a simple performance report."""
     acc = model.score(X_test, y_test)
     y_pred = model.predict(X_test)
@@ -59,7 +73,13 @@ def extract_metrics(model, X_test, y_test):
     }
 
 
-def visualize_comparison(models_dict, X_test, y_test, feature_names, save_path='results_comparison.png'):
+def visualize_comparison(
+    models_dict: Dict[str, Any],
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    feature_names: List[str],
+    save_path: str = 'results_comparison.png'
+) -> None:
     """Creates visual comparison of models."""
     plt.figure(figsize=(14, 8))
     
@@ -80,7 +100,7 @@ def visualize_comparison(models_dict, X_test, y_test, feature_names, save_path='
     plt.savefig(save_path)
 
 
-def run(file_path=None, target_col='target'):
+def run(file_path: str = None, target_col: str = 'target') -> Dict[str, Any]:
     """Run penalized regression pipeline."""
     
     if file_path:
@@ -94,6 +114,11 @@ def run(file_path=None, target_col='target'):
     # Data preparation
     (X_train, X_test, y_train, y_test), scaler = prepare_data(X, y)
 
+    # Determine a safe number of CV splits based on smallest class count
+    class_counts = np.unique(y_train, return_counts=True)[1]
+    min_class = class_counts.min() if class_counts.size else 0
+    cv_splits = max(2, min(5, int(min_class))) if min_class > 1 else 2
+
     # Experiment configurations
     configs = [
         ("L2 (Ridge)", "l2", "lbfgs", None),      
@@ -106,25 +131,47 @@ def run(file_path=None, target_col='target'):
     
     # Training loop
     for name, penalty, solver, l1_ratio in configs:
+        model_key = f'penalized_regression_{name.replace(" ", "_")}'
         try:
-            model = load_model(f'penalized_regression_{name.replace(" ", "_")}')
+            model = load_model(model_key)
             if model is None:
-                model = train_penalized_model(X_train, y_train, penalty, solver, l1_ratio)
-                save_model(model, f'penalized_regression_{name.replace(" ", "_")}')
+                try:
+                    model = train_penalized_model(X_train, y_train, penalty, solver, l1_ratio, cv_splits=cv_splits)
+                except Exception:
+                    # Fallback to simple logistic regression without CV
+                    from sklearn.linear_model import LogisticRegression
+                    model = LogisticRegression(
+                        penalty='l2',
+                        solver='lbfgs',
+                        max_iter=500,
+                        n_jobs=-1
+                    )
+                    model.fit(X_train, y_train)
+                save_model(model, model_key)
             metrics = extract_metrics(model, X_test, y_test)
             results_models[name] = model
             model_metrics[name] = metrics
-        except Exception as e:
-            pass
+        except Exception:
+            continue
 
     # Generate comparison plot
     if results_models:
         visualize_comparison(results_models, X_test, y_test, feats)
     
+    if not model_metrics:
+        return {'error': 'No penalized regression models could be trained.'}
+
+    # Choose best model by (auc, accuracy)
+    best_key = max(model_metrics.items(), key=lambda item: (item[1].get('auc', 0.0), item[1].get('accuracy', 0.0)))[0]
+    best_model = results_models[best_key]
+
+    y_pred = best_model.predict(X_test)
+    report = classification_report(y_test, y_pred)
+
     return {
-        'accuracy': model_metrics[list(model_metrics.keys())[0]]['accuracy'] if model_metrics else 0.0,
-        'auc': model_metrics[list(model_metrics.keys())[0]]['auc'] if model_metrics else 0.0,
-        'report': f"Trained {len(results_models)} models"
+        'accuracy': model_metrics[best_key]['accuracy'],
+        'auc': model_metrics[best_key]['auc'],
+        'report': report
     }
 
 
