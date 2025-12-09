@@ -41,25 +41,41 @@ def train_gam_automatic(X_train, y_train):
     sample_weights = np.array([class_weights[val] for val in y_train])
 
     # Retry with increasing regularization and capped iterations
-    lam_grid = [10, 50, 200]
+    lam_grid = [10, 50, 200, 500, 1000]
+    last_error = None
+    
     for lam_val in lam_grid:
         try:
             gam = LogisticGAM(
                 combined_terms,
                 fit_intercept=True,
                 lam=lam_val,
-                max_iter=200,
-                tol=1e-3
+                max_iter=150,
+                tol=1e-2
             )
-            gam.fit(X_train, y_train, weights=sample_weights)
-            return gam
-        except Exception:
+            # Suppress numpy warnings during fit
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=RuntimeWarning)
+                gam.fit(X_train, y_train, weights=sample_weights)
+            
+            # Verify model is not degenerate
+            preds = gam.predict(X_train)
+            if len(np.unique(preds)) >= 2:
+                return gam
+        except Exception as e:
+            last_error = e
             continue
 
-    # Fallback: very strong regularization
-    gam = LogisticGAM(combined_terms, fit_intercept=True, lam=500, max_iter=200, tol=1e-3)
-    gam.fit(X_train, y_train, weights=sample_weights)
-    return gam
+    # Fallback: use L2-regularized logistic regression instead of GAM
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_train)
+    lr = LogisticRegression(C=0.1, solver='lbfgs', max_iter=500, random_state=42)
+    lr.fit(X_scaled, y_train, sample_weight=sample_weights)
+    return lr
+
 
 
 def should_retrain(model, X_train, y_train, min_acc=0.6):
